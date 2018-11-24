@@ -6,6 +6,7 @@ class Main:
 
     def __init__(self):
         self.cracks = []
+        self.solution = []
         self.N = int(input('Enter number of cracks: '))
         self.G = int(input('Enter the value of the elastic: '))
         self.N1 = 40
@@ -14,8 +15,8 @@ class Main:
         self.solve()
 
     def init_cracks(self):
-        for i in range(self.N + 1):
-            self.cracks.append(Crack(i + 1))
+        for i in range(self.N):
+            self.cracks.append(Crack(i))
 
     def solve(self):
         equations = []
@@ -27,13 +28,15 @@ class Main:
             equations.append(self.use_extra_conditions(crack))
             right_side.append(0)
 
-            # main formula
+            # use main formula
             collocation_points = self.get_collocation_points()
             for s_j in collocation_points:
                 equations.append(self.calculate(crack, s_j))
                 right_side.append(-2 * crack.tao / self.G)
 
         self.solve_equations(equations, right_side)
+        self.calc_KINs()
+        self.print_results()
 
     def use_extra_conditions(self, crack):
         equation = []
@@ -75,6 +78,30 @@ class Main:
                     equation.append(crack_k.a / self.N2 * self.calc_K(crack_j, crack_k, ksi, s_j) * self.calc_T(ksi, n))
 
         return equation
+
+    def calc_KINs(self):
+        def calc_KIN_A(crack, coefs):
+            kin_a = 0
+            for m in range(self.N1):
+                kin_a += (-1) ** m * coefs[m]
+
+            return self.G * math.sqrt(math.pi * crack.a) * kin_a / 2
+
+        def calc_KIN_B(crack, coefs):
+            kin_b = 0
+            for m in range(self.N1):
+                kin_b += (-1) ** (-m) * coefs[m]
+
+            return -self.G * math.sqrt(math.pi * crack.a) * kin_b / 2
+
+        for crack in self.cracks:
+            crack.kin_a = calc_KIN_A(crack, self.solution[crack.index])
+            crack.kin_b = calc_KIN_B(crack, self.solution[crack.index])
+
+    def print_results(self):
+        for crack in self.cracks:
+            print(f'Crack #{crack.index + 1}')
+            print(f'{crack.kin_a}  {crack.kin_b}')
 
     @staticmethod
     def is_current_crack(crack_j, crack_k):
